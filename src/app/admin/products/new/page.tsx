@@ -31,6 +31,7 @@ export default function NewProduct() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Form Fields
   const [formData, setFormData] = useState({
@@ -107,6 +108,35 @@ export default function NewProduct() {
       setSelectedImages(selectedImages.filter(i => i !== url));
     } else {
       setSelectedImages([...selectedImages, url]);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch('/api/admin/media', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const newMedia = await res.json();
+        setMediaItems(prev => [newMedia, ...prev]);
+        setSelectedImages(prev => [...prev, newMedia.url]);
+      } else {
+        alert('Failed to upload image.');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload image.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -306,9 +336,26 @@ export default function NewProduct() {
 
             {/* Images selection gallery */}
             <div className="bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-5">
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400">Image Gallery</h3>
-                <p className="text-[10px] text-neutral-400 mt-1">Select one or more catalog assets stored in your media vault</p>
+              <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 pb-2">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400">Image Gallery</h3>
+                  <p className="text-[10px] text-neutral-400 mt-1">Select one or more catalog assets stored in your media vault</p>
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    id="image-upload"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    className="cursor-pointer inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <Icon name="ArrowUpTrayIcon" size={12} /> {isUploading ? 'Uploading...' : 'Upload Image'}
+                  </label>
+                </div>
               </div>
 
               {mediaItems.length === 0 ? (
@@ -356,6 +403,7 @@ export default function NewProduct() {
               <div>
                 <label className="block text-[9px] font-bold uppercase tracking-wider text-neutral-500 mb-1.5">Store Category *</label>
                 <select name="categoryId" required value={formData.categoryId} onChange={handleChange} className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-3 py-2.5 rounded-lg focus:outline-none">
+                  <option value="" disabled>Select a Category</option>
                   {categories.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
