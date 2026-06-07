@@ -44,6 +44,27 @@ interface CollectionsClientProps {
   categories: Category[];
 }
 
+const COLOR_MAP: Record<string, string> = {
+  // Item 1 Colors
+  'Midnight Onyx': '#111111',
+  'Tuscan Cocoa': '#5D4037',     // Cocoa Brown
+  'Alabaster Milk': '#F5EFE6',    // Milk Cream
+  'Rose Quartz': '#F3B0C3',       // Quartz Pink
+  'Ethereal Azure': '#A8D3E6',    // Soft Azure Blue
+
+  // Item 2 Colors
+  'Ivory Silk': '#FFFDF9',
+  'Sage Garden': '#9CA998',
+  'Dusty Rose': '#CCA7A2',
+  'Classic Navy': '#1B365D',
+
+  // Item 3 Colors
+  'Midnight Noir': '#111111',
+  'Alabaster White': '#FFFFFF',
+  'Powder Rose': '#FFD1DC',
+  'Soft Horizon': '#89CFF0',
+};
+
 export default function CollectionsClient({ products, categories }: CollectionsClientProps) {
   const { language } = useLanguage();
   const { addToCart } = useCart();
@@ -364,13 +385,21 @@ export default function CollectionsClient({ products, categories }: CollectionsC
                           <button
                             key={color}
                             onClick={() => setSelectedColor(color)}
-                            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
                               selectedColor === color
                                 ? 'bg-neutral-950 text-white border-neutral-950'
                                 : 'bg-transparent text-neutral-700 border-neutral-200 hover:border-neutral-400'
                             }`}
                           >
-                            {color}
+                            {COLOR_MAP[color] && (
+                              <span
+                                className={`w-3.5 h-3.5 rounded-full flex-shrink-0 transition-transform ${
+                                  selectedColor === color ? 'border border-white/50 scale-110' : 'border border-neutral-200'
+                                }`}
+                                style={{ backgroundColor: COLOR_MAP[color] }}
+                              />
+                            )}
+                            <span>{color}</span>
                           </button>
                         ))}
                       </div>
