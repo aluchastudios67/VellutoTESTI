@@ -1,103 +1,107 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    // ── 1. Core metrics — run all three queries in parallel ──────────────────
+    const [orderAggregates, lowStockAlerts, bestSellersRaw] = await Promise.all([
+      // Total revenue + order count (single aggregate, no JS loop needed)
+      prisma.order.aggregate({
+        where: { status: { not: 'CANCELLED' } },
+        _sum: { total: true },
+        _count: { id: true },
+      }),
 
-    // 1. Fetch Orders & Calculate Metrics
-    const allOrders = await prisma.order.findMany({
-      include: { items: true },
+      // Low-stock products (only active ones, only fields we need)
+      prisma.product.findMany({
+        where: { inventory: { lte: 5 }, status: 'ACTIVE' },
+        select: { id: true, name: true, sku: true, inventory: true },
+        orderBy: { inventory: 'asc' },
+      }),
+
+      // Best sellers via groupBy on OrderItems — DB does the heavy lifting
+      prisma.orderItem.groupBy({
+        by: ['productId', 'productName'],
+        _sum: { qty: true, productPrice: true },
+        orderBy: { _sum: { qty: 'desc' } },
+        take: 5,
+      }),
+    ]);
+
+    const totalRevenue = orderAggregates._sum.total ?? 0;
+    const totalOrdersCount = orderAggregates._count.id;
+
+    // ── 2. Monthly sales chart — real data, last 6 months ───────────────────
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    const monthlyOrders = await prisma.order.findMany({
+      where: {
+        status: { not: 'CANCELLED' },
+        createdAt: { gte: sixMonthsAgo },
+      },
+      select: { total: true, createdAt: true },
     });
 
-    const activeOrders = allOrders.filter(o => o.status !== 'CANCELLED');
-    const totalRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0);
-    const totalOrdersCount = allOrders.length;
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    // Monthly Sales Chart Data (Mocking last 6 months based on actual orders if present)
-    const monthlySalesMap: Record<string, { revenue: number; orders: number }> = {
-      'Jan': { revenue: 1250, orders: 4 },
-      'Feb': { revenue: 2100, orders: 6 },
-      'Mar': { revenue: 1850, orders: 5 },
-      'Apr': { revenue: 3200, orders: 8 },
-      'May': { revenue: 4100, orders: 11 },
-      'Jun': { revenue: 0, orders: 0 },
-    };
+    // Build a map keyed by "YYYY-M" for the last 6 months
+    const chartMap = new Map<string, { name: string; revenue: number; orders: number }>();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      chartMap.set(key, { name: monthNames[d.getMonth()], revenue: 0, orders: 0 });
+    }
 
-    // Populate actual June/current order totals if they occur
-    activeOrders.forEach((o) => {
-      const date = new Date(o.createdAt);
-      const month = date.toLocaleString('default', { month: 'short' }); // e.g. "Jun"
-      if (monthlySalesMap[month] !== undefined) {
-        monthlySalesMap[month].revenue += o.total;
-        monthlySalesMap[month].orders += 1;
-      } else {
-        monthlySalesMap[month] = { revenue: o.total, orders: 1 };
+    for (const order of monthlyOrders) {
+      const d = new Date(order.createdAt);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const slot = chartMap.get(key);
+      if (slot) {
+        slot.revenue += order.total;
+        slot.orders += 1;
       }
-    });
+    }
 
-    const monthlySalesChart = Object.entries(monthlySalesMap).map(([name, data]) => ({
-      name,
-      revenue: data.revenue,
-      orders: data.orders,
+    const monthlySalesChart = Array.from(chartMap.values());
+
+    // ── 3. Format best sellers ───────────────────────────────────────────────
+    const bestSellers = bestSellersRaw.map((row) => ({
+      name: row.productName,
+      qty: row._sum.qty ?? 0,
+      revenue: (row._sum.productPrice ?? 0) * (row._sum.qty ?? 0),
     }));
 
-    // 2. Best Sellers aggregation
-    const itemsGrouped: Record<string, { name: string; qty: number; revenue: number }> = {};
-    const items = await prisma.orderItem.findMany();
-    items.forEach((item) => {
-      if (itemsGrouped[item.productId || ''] !== undefined) {
-        itemsGrouped[item.productId || ''].qty += item.qty;
-        itemsGrouped[item.productId || ''].revenue += item.productPrice * item.qty;
-      } else {
-        itemsGrouped[item.productId || ''] = {
-          name: item.productName,
-          qty: item.qty,
-          revenue: item.productPrice * item.qty,
-        };
-      }
-    });
-
-    const bestSellers = Object.values(itemsGrouped)
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 5);
-
-    // 3. Inventory Stock Status & Alerts
-    const lowStockAlerts = await prisma.product.findMany({
-      where: {
-        inventory: { lte: 5 },
-        status: 'ACTIVE',
-      },
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        inventory: true,
-      },
-    });
-
-    // 4. Traffic & Conversion metrics
-    const trafficOverview = {
-      visitors: 1840,
-      pageViews: 5240,
-      conversionRate: 3.2, // percentage
-      bounceRate: 42.5,
-    };
-
-    return NextResponse.json({
+    // ── 4. Response with cache headers (60s fresh, 5min stale-while-revalidate)
+    const response = NextResponse.json({
       metrics: {
         totalRevenue,
         totalOrdersCount,
-        averageOrderValue: totalOrdersCount > 0 ? Math.round(totalRevenue / totalOrdersCount) : 0,
+        averageOrderValue:
+          totalOrdersCount > 0 ? Math.round(totalRevenue / totalOrdersCount) : 0,
         lowStockCount: lowStockAlerts.length,
       },
       monthlySalesChart,
       bestSellers,
       lowStockAlerts,
-      trafficOverview,
+      trafficOverview: {
+        visitors: 0,
+        pageViews: 0,
+        conversionRate: 0,
+        bounceRate: 0,
+      },
     });
+
+    response.headers.set('Cache-Control', 'private, s-maxage=60, stale-while-revalidate=300');
+    return response;
   } catch (e) {
-    return NextResponse.json({ error: 'Failed to fetch analytics statistics.' }, { status: 500 });
+    console.error('[analytics] Failed to fetch analytics:', e);
+    return NextResponse.json(
+      { error: 'Failed to fetch analytics statistics.' },
+      { status: 500 },
+    );
   }
 }

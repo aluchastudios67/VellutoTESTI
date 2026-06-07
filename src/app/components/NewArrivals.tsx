@@ -85,35 +85,29 @@ export default function NewArrivals() {
   const revealRef = useScrollAnimation();
   const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
 
-  // Load products from localStorage to allow admin management edits to display on the storefront
   useEffect(() => {
-    const savedProducts = localStorage.getItem('velluto_products');
-    if (savedProducts) {
-      try {
-        setProducts(JSON.parse(savedProducts));
-      } catch (e) {
-        console.error('Error parsing products from localStorage', e);
-      }
-    } else {
-      // Initialize localStorage with defaults if not present
-      localStorage.setItem('velluto_products', JSON.stringify(DEFAULT_PRODUCTS));
-    }
-
-    // Add a simple storage event listener to reflect real-time updates
-    const handleStorageChange = () => {
-      const updatedProducts = localStorage.getItem('velluto_products');
-      if (updatedProducts) {
-        setProducts(JSON.parse(updatedProducts));
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    // Custom event dispatch wrapper support for single tab updates
-    window.addEventListener('products_updated', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('products_updated', handleStorageChange);
-    };
+    // Fetch real products from the DB API (uses CDN cache — fast)
+    fetch('/api/products')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          // Map DB shape to the local Product shape NewArrivals expects
+          const mapped: Product[] = data.slice(0, 6).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            nameKa: p.nameKa,
+            nameRu: p.nameRu,
+            price: p.price,
+            img: p.images?.[0]?.url || '/assets/images/no_image.png',
+            tag: p.tag,
+            rating: p.rating ?? 5,
+          }));
+          setProducts(mapped);
+        }
+      })
+      .catch(() => {
+        // Silently fall back to default products on error
+      });
   }, []);
 
   const getProdName = (prod: Product) => {

@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import Navigation from '@/components/Navigation';
 import MiniCart from '@/components/MiniCart';

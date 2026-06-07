@@ -3,9 +3,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   try {
-
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || '';
     const payment = searchParams.get('payment') || '';
@@ -50,106 +51,106 @@ export async function POST(req: Request) {
       couponCode,
     } = body;
 
-    if (!customerName || !phone || !address || !items || !Array.isArray(items) || items.length === 0 || !total) {
+    if (
+      !customerName ||
+      !phone ||
+      !address ||
+      !items ||
+      !Array.isArray(items) ||
+      items.length === 0 ||
+      !total
+    ) {
       return NextResponse.json({ error: 'Missing required parameters.' }, { status: 400 });
     }
 
-    // Generate numeric order ID (e.g. ORD-100204 format)
+    // Generate order ID
     const orderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    // 1. Manage Customer Profile (Match by Phone)
-    let customer = await prisma.customer.findUnique({
-      where: { phone },
-    });
+    // ── Run the entire order creation atomically in a single transaction ─────
+    const newOrder = await prisma.$transaction(async (tx) => {
+      // 1. Upsert customer by phone (replaces find + conditional create/update)
+      const customer = await tx.customer.upsert({
+        where: { phone },
+        create: { name: customerName, phone, address, segment: 'New' },
+        update: { address },
+      });
 
-    if (!customer) {
-      customer = await prisma.customer.create({
+      // 2. Validate & increment coupon usage
+      let couponId: string | null = null;
+      if (couponCode) {
+        const dbCoupon = await tx.coupon.findUnique({
+          where: { code: couponCode.toUpperCase().trim() },
+        });
+        if (dbCoupon?.isActive) {
+          couponId = dbCoupon.id;
+          await tx.coupon.update({
+            where: { id: dbCoupon.id },
+            data: { usageCount: { increment: 1 } },
+          });
+        }
+      }
+
+      // 3. Create the order
+      const order = await tx.order.create({
         data: {
-          name: customerName,
+          id: orderId,
+          customerName,
           phone,
           address,
-          segment: 'New',
+          deliveryDate,
+          deliveryTime,
+          paymentMethod,
+          notes,
+          total: Number(total),
+          status: 'PENDING',
+          paymentStatus: 'UNPAID',
+          customerId: customer.id,
+          couponId,
         },
       });
-    } else {
-      // Update customer address if it changed
-      await prisma.customer.update({
-        where: { id: customer.id },
-        data: { address },
-      });
-    }
 
-    // 2. Coupon Validation
-    let couponId = null;
-    if (couponCode) {
-      const dbCoupon = await prisma.coupon.findUnique({
-        where: { code: couponCode.toUpperCase().trim() },
-      });
-      if (dbCoupon && dbCoupon.isActive) {
-        couponId = dbCoupon.id;
-        await prisma.coupon.update({
-          where: { id: dbCoupon.id },
-          data: { usageCount: { increment: 1 } },
-        });
-      }
-    }
-
-    // 3. Create Order
-    const newOrder = await prisma.order.create({
-      data: {
-        id: orderId,
-        customerName,
-        phone,
-        address,
-        deliveryDate,
-        deliveryTime,
-        paymentMethod,
-        notes,
-        total: Number(total),
-        status: 'PENDING',
-        paymentStatus: 'UNPAID',
-        customerId: customer.id,
-        couponId,
-      },
-    });
-
-    // 4. Create OrderItems and Deduct Inventory
-    for (const item of items) {
-      await prisma.orderItem.create({
-        data: {
-          orderId: newOrder.id,
-          productId: item.id,
+      // 4. Batch-insert all order items in one query (was serial N inserts)
+      await tx.orderItem.createMany({
+        data: items.map((item: any) => ({
+          orderId: order.id,
+          productId: item.id ?? null,
           productName: item.name,
           productPrice: Number(item.price),
           qty: Number(item.qty),
-          variantSelected: item.variantSelected || null,
+          variantSelected: item.variantSelected ?? null,
+        })),
+      });
+
+      // 5. Batch-decrement inventory — all in parallel, still inside transaction
+      await Promise.all(
+        items
+          .filter((item: any) => item.id)
+          .map((item: any) =>
+            tx.product.update({
+              where: { id: item.id },
+              data: { inventory: { decrement: Number(item.qty) } },
+            }),
+          ),
+      );
+
+      // 6. Create system notification
+      await tx.notification.create({
+        data: {
+          title: 'New Storefront Order',
+          message: `${customerName} placed order ${order.id} for ${total} GEL.`,
+          type: 'ORDER',
         },
       });
 
-      // Deduct inventory from general product stock
-      try {
-        await prisma.product.update({
-          where: { id: item.id },
-          data: {
-            inventory: { decrement: Number(item.qty) },
-          },
-        });
-      } catch (err) {
-        console.error(`Failed to decrement product stock for ${item.id}`);
-      }
-    }
-
-    // 5. Create System Notification
-    await prisma.notification.create({
-      data: {
-        title: 'New Storefront Order',
-        message: `${customerName} placed order ${orderId} total ${total} GEL.`,
-        type: 'ORDER',
-      },
+      return order;
     });
 
     return NextResponse.json(newOrder);
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'Failed to create order.' }, { status: 500 });
+    console.error('[orders POST]', e);
+    return NextResponse.json(
+      { error: e.message || 'Failed to create order.' },
+      { status: 500 },
+    );
   }
 }

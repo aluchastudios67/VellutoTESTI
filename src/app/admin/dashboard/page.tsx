@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminLayout from '../components/AdminLayout';
 import StatCard from '../components/StatCard';
@@ -34,6 +34,7 @@ export default function DashboardOverview() {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -45,71 +46,34 @@ export default function DashboardOverview() {
     loadData();
   }, []);
 
-  const loadData = () => {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      // Load orders from localStorage
-      const ordersStr = typeof window !== 'undefined' ? localStorage.getItem('velluto_orders') : null;
-      const orders: any[] = ordersStr ? JSON.parse(ordersStr) : [];
+      setError(null);
 
-      // Load products from localStorage
-      const productsStr = typeof window !== 'undefined' ? localStorage.getItem('velluto_products') : null;
-      const products: any[] = productsStr ? JSON.parse(productsStr) : [];
+      // Fetch analytics and recent orders in parallel from the real DB
+      const [analyticsRes, ordersRes] = await Promise.all([
+        fetch('/api/admin/analytics', { cache: 'no-store' }),
+        fetch('/api/admin/orders', { cache: 'no-store' }),
+      ]);
 
-      // Compute metrics
-      const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-      const totalOrdersCount = orders.length;
-      const averageOrderValue = totalOrdersCount > 0 ? Math.round(totalRevenue / totalOrdersCount) : 0;
-      const lowStockCount = products.filter((p) => (p.inventory ?? 99) <= 5).length;
+      if (!analyticsRes.ok) throw new Error('Failed to load analytics.');
+      if (!ordersRes.ok) throw new Error('Failed to load orders.');
 
-      // Build monthly chart data (last 6 months)
-      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const now = new Date();
-      const monthlySalesChart = Array.from({ length: 6 }, (_, i) => {
-        const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-        const monthOrders = orders.filter((o) => {
-          const ot = new Date(o.createdAt || o.timestamp || 0);
-          return ot.getMonth() === d.getMonth() && ot.getFullYear() === d.getFullYear();
-        });
-        return {
-          name: monthNames[d.getMonth()],
-          revenue: monthOrders.reduce((s, o) => s + (o.total || 0), 0),
-          orders: monthOrders.length,
-        };
-      });
+      const [analyticsData, ordersData] = await Promise.all([
+        analyticsRes.json(),
+        ordersRes.json(),
+      ]);
 
-      // Best sellers
-      const itemCounts: Record<string, { name: string; qty: number; revenue: number }> = {};
-      orders.forEach((o) => {
-        (o.items || []).forEach((item: any) => {
-          if (!itemCounts[item.id]) itemCounts[item.id] = { name: item.name, qty: 0, revenue: 0 };
-          itemCounts[item.id].qty += item.qty || 1;
-          itemCounts[item.id].revenue += (item.price || 0) * (item.qty || 1);
-        });
-      });
-      const bestSellers = Object.values(itemCounts)
-        .sort((a, b) => b.qty - a.qty)
-        .slice(0, 5);
-
-      // Low stock alerts
-      const lowStockAlerts = products
-        .filter((p) => (p.inventory ?? 99) <= 5)
-        .map((p) => ({ id: p.id, name: p.name, sku: p.id, inventory: p.inventory ?? 0 }));
-
-      setData({
-        metrics: { totalRevenue, totalOrdersCount, averageOrderValue, lowStockCount },
-        monthlySalesChart,
-        bestSellers,
-        lowStockAlerts,
-        trafficOverview: { visitors: 0, pageViews: 0, conversionRate: 0, bounceRate: 0 },
-      });
-      setRecentOrders(orders.slice(0, 5));
-    } catch (e) {
-      console.error('Failed to load dashboard data', e);
+      setData(analyticsData);
+      setRecentOrders(Array.isArray(ordersData) ? ordersData.slice(0, 5) : []);
+    } catch (e: any) {
+      console.error('[dashboard] Failed to load:', e);
+      setError(e.message || 'Failed to load dashboard data.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const handleRestock = async (prodId: string, currentInv: number) => {
     const qtyStr = window.prompt('Enter restock quantity:', '10');
@@ -137,6 +101,11 @@ export default function DashboardOverview() {
     }
   };
 
+  function darkModeActive() {
+    if (typeof window === 'undefined') return false;
+    return document.documentElement.classList.contains('dark');
+  }
+
   if (isLoading || !data) {
     return (
       <AdminLayout>
@@ -148,12 +117,23 @@ export default function DashboardOverview() {
     );
   }
 
-  const chartColor = darkModeActive() ? '#ffffff' : '#171717';
-
-  function darkModeActive() {
-    if (typeof window === 'undefined') return false;
-    return document.documentElement.classList.contains('dark');
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center py-40 space-y-4">
+          <p className="text-sm text-red-500 font-semibold">{error}</p>
+          <button
+            onClick={loadData}
+            className="px-4 py-2 bg-neutral-950 text-white text-xs font-bold rounded-xl"
+          >
+            Retry
+          </button>
+        </div>
+      </AdminLayout>
+    );
   }
+
+  const chartColor = darkModeActive() ? '#ffffff' : '#171717';
 
   return (
     <AdminLayout>
