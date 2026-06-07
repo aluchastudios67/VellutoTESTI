@@ -5,18 +5,19 @@ import Image from 'next/image';
 
 const HERO_SLIDES = [
   {
-    src: '/assets/images/SnapInsta.to_509639901_17883773823313946_8207471632911727314_n.jpg',
+    src: '/assets/Landpage images/DSC06962.jpeg',
     alt: 'Velluto premium collection',
   },
   {
-    src: '/assets/images/SnapInsta.to_567283772_17897423943313946_1224297561252081588_n.jpg',
+    src: '/assets/Landpage images/IMG_0701.jpeg',
     alt: 'Velluto exclusive design series',
   },
   {
-    src: '/assets/images/SnapInsta.to_639852206_17912699673313946_602977115060223598_n.png',
+    src: '/assets/Landpage images/IMG_8337.jpeg',
     alt: 'Velluto luxury statement catalog',
   },
 ];
+
 
 const CINEMATIC_STYLE = `
   @keyframes velluto-cinematic-in {
@@ -120,29 +121,25 @@ export default function HeroSection() {
         <div className="velluto-logo-cinematic flex flex-col items-center gap-5">
 
           {/* Logo — cropped to letters only (hides the V shape above) */}
+          {/* Logo */}
           <div
             style={{
-              width: '420px',
-              height: '80px',
-              overflow: 'hidden',
+              width: '550px',
               position: 'relative',
             }}
           >
             <Image
-              src="/assets/images/app_logo.png"
+              src="/assets/images/logowithbg.png"
               alt="Velluto"
-              width={420}
-              height={420}
+              width={550}
+              height={160}
               quality={85}
               priority
               className="object-contain select-none"
               style={{
-                filter: 'brightness(1.1)',
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
                 width: '100%',
                 height: 'auto',
+                filter: 'invert(1) drop-shadow(0px 2px 10px rgba(0,0,0,0.75)) drop-shadow(0px 1px 3px rgba(0,0,0,0.6))',
               }}
             />
           </div>

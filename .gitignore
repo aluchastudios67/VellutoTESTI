@@ -42,3 +42,10 @@ turbo/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+

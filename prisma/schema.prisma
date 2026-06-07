@@ -1,58 +1,21 @@
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
 
 generator client {
   provider = "prisma-client-js"
 }
 
-enum UserRole {
-  SUPER_ADMIN
-  ADMIN
-  STAFF
-}
 
-enum ProductStatus {
-  DRAFT
-  ACTIVE
-  ARCHIVED
-}
-
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
-  REFUNDED
-}
-
-enum PaymentStatus {
-  UNPAID
-  PAID
-  REFUNDED
-}
-
-enum DiscountType {
-  PERCENTAGE
-  FIXED
-}
-
-enum NotificationType {
-  ORDER
-  INVENTORY
-  SYSTEM
-  MESSAGE
-}
 
 model User {
   id        String     @id @default(uuid())
   email     String     @unique
   password  String
   name      String
-  role      UserRole   @default(STAFF)
+  role      String     @default("STAFF")
   status    String     @default("ACTIVE") // ACTIVE, INACTIVE
   auditLogs AuditLog[]
   blogPosts BlogPost[]
@@ -82,7 +45,7 @@ model Product {
   price          Float
   sku            String           @unique
   inventory      Int              @default(0)
-  status         ProductStatus    @default(ACTIVE)
+  status         String           @default("ACTIVE")
   tag            String?
   rating         Int              @default(5)
   categoryId     String
@@ -141,8 +104,8 @@ model Order {
   deliveryTime  String
   paymentMethod String
   notes         String?
-  status        OrderStatus   @default(PENDING)
-  paymentStatus PaymentStatus @default(UNPAID)
+  status        String        @default("PENDING")
+  paymentStatus String        @default("UNPAID")
   total         Float
   items         OrderItem[]
   customerId    String?
@@ -168,7 +131,7 @@ model OrderItem {
 model Coupon {
   id            String       @id @default(uuid())
   code          String       @unique
-  discountType  DiscountType
+  discountType  String
   discountValue Float
   expiresAt     DateTime?
   isActive      Boolean      @default(true)
@@ -210,7 +173,7 @@ model Notification {
   id        String           @id @default(uuid())
   title     String
   message   String
-  type      NotificationType @default(SYSTEM)
+  type      String           @default("SYSTEM")
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
 }
