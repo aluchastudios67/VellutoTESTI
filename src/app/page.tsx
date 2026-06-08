@@ -15,7 +15,7 @@ import { prisma } from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 async function getHomePageData() {
   try {

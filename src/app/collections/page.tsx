@@ -5,8 +5,8 @@ import Footer from '@/components/Footer';
 import CollectionsClient from '@/app/components/CollectionsClient';
 import { prisma } from '@/lib/prisma';
 
-// Always SSR — queries live database on every request
-export const revalidate = 60;
+// Always server-rendered on demand — never prerendered at build time
+export const dynamic = 'force-dynamic';
 
 async function getCollectionsData() {
   const [categories, products] = await Promise.all([
