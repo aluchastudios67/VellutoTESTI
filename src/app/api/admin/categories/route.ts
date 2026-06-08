@@ -50,7 +50,7 @@ export async function POST(req: Request) {
         action: 'CREATE_CATEGORY',
         details: `Created category: ${name}`,
       },
-    });
+    }).catch((err: any) => console.warn('Audit log write failed (non-critical):', err));
 
     return NextResponse.json(category);
   } catch (e) {

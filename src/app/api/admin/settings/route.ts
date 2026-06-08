@@ -58,12 +58,17 @@ export async function POST(req: Request) {
 
     fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'UPDATE_SETTINGS',
-        details: 'Updated global store shipping, tax, payment parameters.',
-      },
-    });
+    // Audit log is non-critical — don't let a DB failure block the save
+    try {
+      await prisma.auditLog.create({
+        data: {
+          action: 'UPDATE_SETTINGS',
+          details: 'Updated global store shipping, tax, payment parameters.',
+        },
+      });
+    } catch (auditErr) {
+      console.warn('Audit log write failed (non-critical):', auditErr);
+    }
 
     return NextResponse.json({ success: true, settings });
   } catch (e) {

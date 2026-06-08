@@ -51,6 +51,8 @@ export default function NewProduct() {
   const router = useRouter();
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(false);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -88,10 +90,14 @@ export default function NewProduct() {
 
         if (catRes.ok) {
           const catData = await catRes.json();
-          setCategories(catData);
-          if (catData.length > 0) {
+          if (Array.isArray(catData) && catData.length > 0) {
+            setCategories(catData);
             setFormData((prev) => ({ ...prev, categoryId: catData[0].id }));
+          } else {
+            setCategoriesError(true);
           }
+        } else {
+          setCategoriesError(true);
         }
 
         if (medRes.ok) {
@@ -100,6 +106,9 @@ export default function NewProduct() {
         }
       } catch (e) {
         console.error('Failed to load form config options');
+        setCategoriesError(true);
+      } finally {
+        setCategoriesLoading(false);
       }
     };
 
@@ -631,22 +640,32 @@ export default function NewProduct() {
                 <label className="block text-[9px] font-bold uppercase tracking-wider text-neutral-500 mb-1.5">
                   Store Category *
                 </label>
-                <select
-                  name="categoryId"
-                  required
-                  value={formData.categoryId}
-                  onChange={handleChange}
-                  className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-3 py-2.5 rounded-lg focus:outline-none"
-                >
-                  <option value="" disabled>
-                    Select a Category
-                  </option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
+                {categoriesLoading ? (
+                  <div className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2.5 rounded-lg text-neutral-400 animate-pulse">
+                    Loading categories...
+                  </div>
+                ) : categoriesError || categories.length === 0 ? (
+                  <div className="w-full text-xs border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 px-3 py-2.5 rounded-lg text-red-500">
+                    Failed to load categories — check DB connection or add categories first.
+                  </div>
+                ) : (
+                  <select
+                    name="categoryId"
+                    required
+                    value={formData.categoryId}
+                    onChange={handleChange}
+                    className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-3 py-2.5 rounded-lg focus:outline-none focus:border-neutral-950 dark:focus:border-white text-neutral-900 dark:text-white"
+                  >
+                    <option value="" disabled>
+                      Select a Category
                     </option>
-                  ))}
-                </select>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
