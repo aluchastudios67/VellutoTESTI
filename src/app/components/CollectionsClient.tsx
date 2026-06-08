@@ -44,6 +44,22 @@ interface CollectionsClientProps {
   categories: Category[];
 }
 
+const COLOR_MAP: Record<string, string> = {
+  'Midnight Onyx': '#111111',
+  'Tuscan Cocoa': '#5D4037',
+  'Alabaster Milk': '#F5EFE6',
+  'Rose Quartz': '#F3B0C3',
+  'Ethereal Azure': '#A8D3E6',
+  'Ivory Silk': '#FFFDF9',
+  'Sage Garden': '#9CA998',
+  'Dusty Rose': '#CCA7A2',
+  'Classic Navy': '#1B365D',
+  'Midnight Noir': '#111111',
+  'Alabaster White': '#F8F6F2',
+  'Powder Rose': '#FFD1DC',
+  'Soft Horizon': '#89CFF0',
+};
+
 export default function CollectionsClient({ products, categories }: CollectionsClientProps) {
   const { language } = useLanguage();
   const [activeCategory, setActiveCategory] = useState('All');
@@ -75,6 +91,12 @@ export default function CollectionsClient({ products, categories }: CollectionsC
     if (language === 'GE') return cat.nameKa;
     if (language === 'RU') return cat.nameRu;
     return cat.name;
+  };
+
+  const getColors = (item: Product) => {
+    if (!item.variants) return [];
+    const colors = item.variants.map((v) => v.color).filter((c): c is string => !!c);
+    return Array.from(new Set(colors));
   };
 
   return (
@@ -194,6 +216,23 @@ export default function CollectionsClient({ products, categories }: CollectionsC
                 <p className="text-xs text-neutral-400 font-light leading-snug line-clamp-1">
                   {getDesc(item)}
                 </p>
+
+                {/* Color swatches */}
+                {getColors(item).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-2">
+                    {getColors(item).map((color) => {
+                      const hex = COLOR_MAP[color] || '#e5e5e5';
+                      return (
+                        <div
+                          key={color}
+                          className="w-3.5 h-3.5 rounded-full border border-neutral-200 shadow-sm"
+                          style={{ backgroundColor: hex }}
+                          title={color}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </Link>
             </article>
           ))}

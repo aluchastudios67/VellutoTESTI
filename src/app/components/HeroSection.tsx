@@ -1,52 +1,50 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 
-const HERO_SLIDES = [
-  {
-    src: '/assets/Landpage images/DSC06962.jpeg',
-    alt: 'Velluto premium collection',
-  },
-  {
-    src: '/assets/Landpage images/IMG_0701.jpeg',
-    alt: 'Velluto exclusive design series',
-  },
-  {
-    src: '/assets/Landpage images/IMG_8337.jpeg',
-    alt: 'Velluto luxury statement catalog',
-  },
-];
+export default function HeroSection({ settings }: { settings?: any }) {
+  const initialSlides =
+    settings && Array.isArray(settings.heroImages) && settings.heroImages.length > 0
+      ? settings.heroImages.map((url: string, idx: number) => ({
+          src: url,
+          alt: `Velluto Hero ${idx + 1}`,
+        }))
+      : [{ src: '/assets/images/no_image.png', alt: 'Velluto' }];
 
-export default function HeroSection() {
+  const [slides] = useState<{ src: string; alt: string }[]>(initialSlides);
   const [activeSlide, setActiveSlide] = useState(0);
   const [prevSlide, setPrevSlide] = useState<number | null>(null);
   const [transitioning, setTransitioning] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const advanceTo = useCallback(
+    (next: number) => {
+      if (transitioning || next === activeSlide) return;
+      setPrevSlide(activeSlide);
+      setActiveSlide(next);
+      setTransitioning(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setPrevSlide(null);
+        setTransitioning(false);
+      }, 1600);
+    },
+    [activeSlide, transitioning]
+  );
+
   useEffect(() => {
+    if (slides.length <= 1) return;
     const interval = setInterval(() => {
-      advanceTo((activeSlide + 1) % HERO_SLIDES.length);
+      advanceTo((activeSlide + 1) % slides.length);
     }, 7000);
     return () => clearInterval(interval);
-  }, [activeSlide]);
-
-  const advanceTo = (next: number) => {
-    if (transitioning || next === activeSlide) return;
-    setPrevSlide(activeSlide);
-    setActiveSlide(next);
-    setTransitioning(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      setPrevSlide(null);
-      setTransitioning(false);
-    }, 1600);
-  };
+  }, [activeSlide, slides.length, advanceTo]);
 
   return (
     <section className="relative w-full h-screen overflow-hidden bg-neutral-950">
       {/* Background Slides — all pre-rendered, toggled via opacity for GPU compositing */}
-      {HERO_SLIDES.map((slide, i) => {
+      {slides.map((slide, i) => {
         const isActive = i === activeSlide;
         const isPrev = i === prevSlide;
         return (
@@ -114,19 +112,21 @@ export default function HeroSection() {
       </div>
 
       {/* Slide indicators */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
-        {HERO_SLIDES.map((_, i) => (
-          <button key={i} onClick={() => advanceTo(i)} aria-label={`Go to slide ${i + 1}`}>
-            <span
-              className={`block rounded-full transition-all duration-700 ease-out ${
-                activeSlide === i
-                  ? 'w-10 h-[3px] bg-white'
-                  : 'w-[3px] h-[3px] bg-white/35 hover:bg-white/60'
-              }`}
-            />
-          </button>
-        ))}
-      </div>
+      {slides.length > 1 && (
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
+          {slides.map((_, i) => (
+            <button key={i} onClick={() => advanceTo(i)} aria-label={`Go to slide ${i + 1}`}>
+              <span
+                className={`block rounded-full transition-all duration-700 ease-out ${
+                  activeSlide === i
+                    ? 'w-10 h-[3px] bg-white'
+                    : 'w-[3px] h-[3px] bg-white/35 hover:bg-white/60'
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

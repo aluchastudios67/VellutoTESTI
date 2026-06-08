@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import Icon from '@/components/ui/AppIcon';
@@ -18,69 +18,26 @@ interface Product {
   rating: number;
 }
 
-const DEFAULT_PRODUCTS: Product[] = [
-  {
-    id: 'item-1',
-    name: 'Aurelia Sun-Drenched Yellow Dress',
-    nameKa: 'ოქროსფერი კაბა აურელია',
-    nameRu: 'Желтое платье Aurelia',
-    price: 490,
-    img: '/assets/item 1/DSC06881.jpeg',
-    tag: 'New Collection',
-    rating: 5,
-  },
-  {
-    id: 'item-2',
-    name: 'Elysian Drape Blazer Suit',
-    nameKa: 'ორეული ელიზიანი',
-    nameRu: 'Костюм блейзер Elysian',
-    price: 470,
-    img: '/assets/item 2/IMG_8337.jpeg',
-    tag: 'Best Seller',
-    rating: 5,
-  },
-  {
-    id: 'item-3',
-    name: 'Seraphina Knitwear Lounge Set',
-    nameKa: 'ნაქსოვი ორეული სერაფინა',
-    nameRu: 'Трикотажный костюм Seraphina',
-    price: 480,
-    img: '/assets/item 3/IMG_0701.jpeg',
-    tag: 'Trending',
-    rating: 5,
-  },
-];
-
-export default function NewArrivals() {
+export default function NewArrivals({ products: initialProducts = [] }: { products?: any[] }) {
   const { addToCart } = useCart();
   const { language, t } = useLanguage();
   const revealRef = useScrollAnimation();
-  const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
 
-  useEffect(() => {
-    // Fetch real products from the DB API (uses CDN cache — fast)
-    fetch('/api/products')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          // Map DB shape to the local Product shape NewArrivals expects
-          const mapped: Product[] = data.slice(0, 6).map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            nameKa: p.nameKa,
-            nameRu: p.nameRu,
-            price: p.price,
-            img: p.images?.[0]?.url || '/assets/images/no_image.png',
-            tag: p.tag,
-            rating: p.rating ?? 5,
-          }));
-          setProducts(mapped);
-        }
-      })
-      .catch(() => {
-        // Silently fall back to default products on error
-      });
-  }, []);
+  const mappedInitial =
+    Array.isArray(initialProducts) && initialProducts.length > 0
+      ? initialProducts.slice(0, 6).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          nameKa: p.nameKa,
+          nameRu: p.nameRu,
+          price: p.price,
+          img: p.images?.[0]?.url || '/assets/images/no_image.png',
+          tag: p.tag,
+          rating: p.rating ?? 5,
+        }))
+      : [];
+
+  const [products] = useState<Product[]>(mappedInitial);
 
   const getProdName = (prod: Product) => {
     if (language === 'GE') return prod.nameKa;

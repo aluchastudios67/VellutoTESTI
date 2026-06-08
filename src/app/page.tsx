@@ -11,10 +11,45 @@ import ShopTheLook from '@/app/components/ShopTheLook';
 import InstagramGallery from '@/app/components/InstagramGallery';
 import Footer from '@/components/Footer';
 
-// Force SSR — CollectionsSection fetches live product data from the database
-export const dynamic = 'force-dynamic';
+import { prisma } from '@/lib/prisma';
+import fs from 'fs';
+import path from 'path';
 
-export default function Home() {
+export const revalidate = 60;
+
+async function getHomePageData() {
+  try {
+    const products = await prisma.product.findMany({
+      where: { status: 'ACTIVE' },
+      select: {
+        id: true,
+        name: true,
+        nameKa: true,
+        nameRu: true,
+        price: true,
+        tag: true,
+        rating: true,
+        images: { select: { url: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    const settingsPath = path.join(process.cwd(), 'src', 'styles', 'settings_config.json');
+    let settings = null;
+    if (fs.existsSync(settingsPath)) {
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+    }
+
+    return { products, settings };
+  } catch (e) {
+    return { products: [], settings: null };
+  }
+}
+
+export default async function Home() {
+  const { products, settings } = await getHomePageData();
+
   return (
     <div className="relative min-h-screen bg-white text-neutral-900 font-sans selection:bg-amber-400 selection:text-neutral-950">
       {/* Navigation Header */}
@@ -25,7 +60,7 @@ export default function Home() {
 
       {/* Hero Section */}
       <main>
-        <HeroSection />
+        <HeroSection settings={settings} />
 
         {/* Editorial Story Narrative */}
         <EditorialIntro />
@@ -37,10 +72,10 @@ export default function Home() {
         <CollectionsSection />
 
         {/* New Arrivals spotlight */}
-        <NewArrivals />
+        <NewArrivals products={products as any} />
 
         {/* Interactive Lookbook */}
-        <ShopTheLook />
+        <ShopTheLook products={products as any} />
 
         {/* Instagram Post Showcase */}
         <InstagramGallery />

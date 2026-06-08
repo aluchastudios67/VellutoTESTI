@@ -6,6 +6,27 @@ import Link from 'next/link';
 import AdminLayout from '../../components/AdminLayout';
 import Icon from '@/components/ui/AppIcon';
 
+const FASHION_COLORS: { name: string; hex: string }[] = [
+  { name: 'Midnight Onyx', hex: '#111111' },
+  { name: 'Tuscan Cocoa', hex: '#5D4037' },
+  { name: 'Alabaster Milk', hex: '#F5EFE6' },
+  { name: 'Rose Quartz', hex: '#F3B0C3' },
+  { name: 'Ethereal Azure', hex: '#A8D3E6' },
+  { name: 'Ivory Silk', hex: '#FFFDF9' },
+  { name: 'Sage Garden', hex: '#9CA998' },
+  { name: 'Dusty Rose', hex: '#CCA7A2' },
+  { name: 'Classic Navy', hex: '#1B365D' },
+  { name: 'Midnight Noir', hex: '#111111' },
+  { name: 'Alabaster White', hex: '#F8F6F2' },
+  { name: 'Powder Rose', hex: '#FFD1DC' },
+  { name: 'Soft Horizon', hex: '#89CFF0' },
+  { name: 'Baby Pink', hex: '#F4C2C2' },
+  { name: 'Baby Blue', hex: '#89CFF0' },
+  { name: 'Black', hex: '#111111' },
+  { name: 'White', hex: '#FFFFFF' },
+  { name: 'Brown', hex: '#5D4037' },
+];
+
 interface Category {
   id: string;
   name: string;
@@ -60,7 +81,11 @@ export default function NewProduct() {
   useEffect(() => {
     const loadFormOptions = async () => {
       try {
-        const catRes = await fetch('/api/admin/categories');
+        const [catRes, medRes] = await Promise.all([
+          fetch('/api/admin/categories'),
+          fetch('/api/admin/media')
+        ]);
+
         if (catRes.ok) {
           const catData = await catRes.json();
           setCategories(catData);
@@ -69,7 +94,6 @@ export default function NewProduct() {
           }
         }
 
-        const medRes = await fetch('/api/admin/media');
         if (medRes.ok) {
           const medData = await medRes.json();
           setMediaItems(medData);
@@ -90,8 +114,8 @@ export default function NewProduct() {
 
   const handleAddVariant = () => {
     const code = formData.sku
-      ? `${formData.sku}-VAR-${variants.length + 1}`
-      : `VAR-${Date.now().toString().slice(-4)}`;
+      ? `${formData.sku}-VAR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+      : `VAR-${Date.now().toString().slice(-6)}`;
     setVariants([
       ...variants,
       { sku: code, size: '', color: '', metal: '', stock: 0, priceAdjustment: 0 },
@@ -261,7 +285,7 @@ export default function NewProduct() {
                     required
                     value={formData.name}
                     onChange={handleChange}
-                    placeholder="e.g. Aura Ring"
+                    placeholder="e.g. Aura Dress"
                     className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-3 py-2.5 rounded-lg focus:outline-none focus:border-neutral-950 dark:focus:border-white text-neutral-900 dark:text-white"
                   />
                 </div>
@@ -275,7 +299,7 @@ export default function NewProduct() {
                     required
                     value={formData.nameKa}
                     onChange={handleChange}
-                    placeholder="მაგ. ბეჭედი აურა"
+                    placeholder="მაგ. კაბა აურა"
                     className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-3 py-2.5 rounded-lg focus:outline-none focus:border-neutral-950 dark:focus:border-white text-neutral-900 dark:text-white"
                   />
                 </div>
@@ -289,7 +313,7 @@ export default function NewProduct() {
                     required
                     value={formData.nameRu}
                     onChange={handleChange}
-                    placeholder="например, Кольцо Аура"
+                    placeholder="например, Платье Аура"
                     className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-3 py-2.5 rounded-lg focus:outline-none focus:border-neutral-950 dark:focus:border-white text-neutral-900 dark:text-white"
                   />
                 </div>
@@ -331,7 +355,7 @@ export default function NewProduct() {
                     value={formData.descriptionRu}
                     onChange={handleChange}
                     rows={3}
-                    placeholder="Описание деталей ювелирного изделия..."
+                    placeholder="Описание деталей одежды..."
                     className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-3 py-2.5 rounded-lg focus:outline-none focus:border-neutral-950 dark:focus:border-white text-neutral-900 dark:text-white resize-none"
                   />
                 </div>
@@ -370,7 +394,7 @@ export default function NewProduct() {
                     name="sku"
                     value={formData.sku}
                     onChange={handleChange}
-                    placeholder="e.g. VEL-RING-AURA-01"
+                    placeholder="e.g. VEL-DRESS-AURA-01"
                     className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-3 py-2.5 rounded-lg focus:outline-none focus:border-neutral-950 dark:focus:border-white text-neutral-900 dark:text-white"
                   />
                 </div>
@@ -407,7 +431,7 @@ export default function NewProduct() {
 
               {variants.length === 0 ? (
                 <p className="text-xs text-neutral-400 dark:text-neutral-500 italic py-4">
-                  No variants defined. Add size or metal choices if applicable.
+                  No variants defined. Add size or color choices if applicable.
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -426,35 +450,52 @@ export default function NewProduct() {
                             required
                             value={variant.sku}
                             onChange={(e) => handleVariantChange(idx, 'sku', e.target.value)}
-                            className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2.5 py-1.5 rounded focus:outline-none"
+                            className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-2.5 py-1.5 rounded focus:outline-none"
                           />
                         </div>
                         <div>
                           <label className="block text-[8px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
                             Size
                           </label>
-                          <input
-                            type="text"
+                          <select
                             value={variant.size}
-                            placeholder="e.g. 17"
                             onChange={(e) => handleVariantChange(idx, 'size', e.target.value)}
-                            className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2.5 py-1.5 rounded focus:outline-none"
-                          />
+                            className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-2.5 py-1.5 rounded focus:outline-none"
+                          >
+                            <option value="">— Size —</option>
+                            {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'].map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[8px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
                             Color
                           </label>
-                          <input
-                            type="text"
-                            value={variant.metal}
-                            placeholder="e.g. Midnight Onyx"
-                            onChange={(e) => {
-                              handleVariantChange(idx, 'metal', e.target.value);
-                              handleVariantChange(idx, 'color', e.target.value);
-                            }}
-                            className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2.5 py-1.5 rounded focus:outline-none"
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              list={`color-options-${idx}`}
+                              value={variant.color || ''}
+                              onChange={(e) => {
+                                const newVariants = [...variants];
+                                newVariants[idx] = { ...newVariants[idx], color: e.target.value, metal: e.target.value };
+                                setVariants(newVariants);
+                              }}
+                              className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 pl-7 pr-2.5 py-1.5 rounded focus:outline-none"
+                              placeholder="Color (e.g. Red, #ff0000)"
+                            />
+                            <datalist id={`color-options-${idx}`}>
+                              {FASHION_COLORS.map((c) => (
+                                <option key={c.name} value={c.name} />
+                              ))}
+                            </datalist>
+                            {/* Color swatch preview */}
+                            <span
+                              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border border-neutral-300 pointer-events-none"
+                              style={{ backgroundColor: FASHION_COLORS.find(c => c.name === variant.color)?.hex || variant.color || '#e5e5e5' }}
+                            />
+                          </div>
                         </div>
                         <div>
                           <label className="block text-[8px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
@@ -467,7 +508,7 @@ export default function NewProduct() {
                             onChange={(e) =>
                               handleVariantChange(idx, 'stock', Number(e.target.value))
                             }
-                            className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2.5 py-1.5 rounded focus:outline-none"
+                            className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-2.5 py-1.5 rounded focus:outline-none"
                           />
                         </div>
                         <div>
@@ -481,7 +522,7 @@ export default function NewProduct() {
                             onChange={(e) =>
                               handleVariantChange(idx, 'priceAdjustment', Number(e.target.value))
                             }
-                            className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2.5 py-1.5 rounded focus:outline-none"
+                            className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-2.5 py-1.5 rounded focus:outline-none"
                           />
                         </div>
                       </div>

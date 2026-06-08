@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Icon from '@/components/ui/AppIcon';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -14,9 +15,11 @@ export default function Footer() {
         {/* Brand Info */}
         <div className="space-y-4">
           <Link href="/" className="inline-block">
-            <img
+            <Image
               src="/assets/images/logowithbg.png"
               alt="Velluto"
+              width={300}
+              height={144}
               className="h-36 w-auto object-contain invert -my-10"
             />
           </Link>

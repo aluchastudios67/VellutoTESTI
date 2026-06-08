@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import AdminLayout from '../components/AdminLayout';
 import DataTable from '../components/DataTable';
 import Icon from '@/components/ui/AppIcon';
@@ -87,10 +88,12 @@ export default function ProductsCatalog() {
       header: 'Image',
       accessor: (p: Product) => (
         <div className="w-10 h-12 rounded bg-neutral-100 dark:bg-neutral-800 overflow-hidden relative shadow-sm">
-          <img
+          <Image
             src={p.images?.[0]?.url || '/assets/images/no_image.png'}
             alt={p.name}
-            className="w-full h-full object-cover"
+            fill
+            sizes="40px"
+            className="object-cover"
           />
         </div>
       ),

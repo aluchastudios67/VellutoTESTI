@@ -6,6 +6,27 @@ import Link from 'next/link';
 import AdminLayout from '../../components/AdminLayout';
 import Icon from '@/components/ui/AppIcon';
 
+const FASHION_COLORS: { name: string; hex: string }[] = [
+  { name: 'Midnight Onyx', hex: '#111111' },
+  { name: 'Tuscan Cocoa', hex: '#5D4037' },
+  { name: 'Alabaster Milk', hex: '#F5EFE6' },
+  { name: 'Rose Quartz', hex: '#F3B0C3' },
+  { name: 'Ethereal Azure', hex: '#A8D3E6' },
+  { name: 'Ivory Silk', hex: '#FFFDF9' },
+  { name: 'Sage Garden', hex: '#9CA998' },
+  { name: 'Dusty Rose', hex: '#CCA7A2' },
+  { name: 'Classic Navy', hex: '#1B365D' },
+  { name: 'Midnight Noir', hex: '#111111' },
+  { name: 'Alabaster White', hex: '#F8F6F2' },
+  { name: 'Powder Rose', hex: '#FFD1DC' },
+  { name: 'Soft Horizon', hex: '#89CFF0' },
+  { name: 'Baby Pink', hex: '#F4C2C2' },
+  { name: 'Baby Blue', hex: '#89CFF0' },
+  { name: 'Black', hex: '#111111' },
+  { name: 'White', hex: '#FFFFFF' },
+  { name: 'Brown', hex: '#5D4037' },
+];
+
 interface Category {
   id: string;
   name: string;
@@ -62,20 +83,22 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     const loadFormOptions = async () => {
       try {
-        const catRes = await fetch('/api/admin/categories');
+        const [catRes, medRes, prodRes] = await Promise.all([
+          fetch('/api/admin/categories'),
+          fetch('/api/admin/media'),
+          fetch(`/api/admin/products/${id}`)
+        ]);
+
         if (catRes.ok) {
           const catData = await catRes.json();
           setCategories(catData);
         }
 
-        const medRes = await fetch('/api/admin/media');
         if (medRes.ok) {
           const medData = await medRes.json();
           setMediaItems(medData);
         }
 
-        // Fetch original product data
-        const prodRes = await fetch(`/api/admin/products/${id}`);
         if (prodRes.ok) {
           const prodData = await prodRes.json();
           setFormData({
@@ -120,8 +143,8 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
 
   const handleAddVariant = () => {
     const code = formData.sku
-      ? `${formData.sku}-VAR-${variants.length + 1}`
-      : `VAR-${Date.now().toString().slice(-4)}`;
+      ? `${formData.sku}-VAR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+      : `VAR-${Date.now().toString().slice(-6)}`;
     setVariants([
       ...variants,
       { sku: code, size: '', color: '', metal: '', stock: 0, priceAdjustment: 0 },
@@ -404,7 +427,7 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
 
               {variants.length === 0 ? (
                 <p className="text-xs text-neutral-400 dark:text-neutral-500 italic py-4">
-                  No variants defined. Add size or metal choices if applicable.
+                  No variants defined. Add size or color choices if applicable.
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -431,30 +454,47 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
                           <label className="block text-[8px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
                             Size
                           </label>
-                          <input
-                            type="text"
+                          <select
                             disabled={isStaff}
                             value={variant.size}
-                            placeholder="e.g. 17"
                             onChange={(e) => handleVariantChange(idx, 'size', e.target.value)}
                             className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2.5 py-1.5 rounded focus:outline-none disabled:bg-neutral-100 dark:disabled:bg-neutral-800"
-                          />
+                          >
+                            <option value="">— Size —</option>
+                            {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'].map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[8px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
                             Color
                           </label>
-                          <input
-                            type="text"
-                            disabled={isStaff}
-                            value={variant.metal}
-                            placeholder="e.g. Midnight Onyx"
-                            onChange={(e) => {
-                              handleVariantChange(idx, 'metal', e.target.value);
-                              handleVariantChange(idx, 'color', e.target.value);
-                            }}
-                            className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2.5 py-1.5 rounded focus:outline-none disabled:bg-neutral-100 dark:disabled:bg-neutral-800"
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              list={`color-options-${idx}`}
+                              disabled={isStaff}
+                              value={variant.color || variant.metal || ''}
+                              onChange={(e) => {
+                                const newVariants = [...variants];
+                                newVariants[idx] = { ...newVariants[idx], color: e.target.value, metal: e.target.value };
+                                setVariants(newVariants);
+                              }}
+                              className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 pl-7 pr-2.5 py-1.5 rounded focus:outline-none disabled:bg-neutral-100 dark:disabled:bg-neutral-800"
+                              placeholder="Color (e.g. Red, #ff0000)"
+                            />
+                            <datalist id={`color-options-${idx}`}>
+                              {FASHION_COLORS.map((c) => (
+                                <option key={c.name} value={c.name} />
+                              ))}
+                            </datalist>
+                            {/* Color swatch preview */}
+                            <span
+                              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border border-neutral-300 pointer-events-none"
+                              style={{ backgroundColor: FASHION_COLORS.find(c => c.name === (variant.color || variant.metal))?.hex || (variant.color || variant.metal) || '#e5e5e5' }}
+                            />
+                          </div>
                         </div>
                         <div>
                           <label className="block text-[8px] font-bold uppercase tracking-wider text-neutral-400 mb-1">

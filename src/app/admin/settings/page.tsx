@@ -8,6 +8,7 @@ export default function StoreSettings() {
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const loadSettings = async () => {
     try {
@@ -43,6 +44,44 @@ export default function StoreSettings() {
         [key]: value,
       });
     }
+  };
+
+  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setIsUploading(true);
+    try {
+      const res = await fetch('/api/admin/media', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSettings({
+          ...settings,
+          heroImages: [...(settings.heroImages || []), data.url],
+        });
+      } else {
+        alert('Failed to upload image.');
+      }
+    } catch (err) {
+      alert('Error uploading image.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeHeroImage = (index: number) => {
+    const newImages = [...(settings.heroImages || [])];
+    newImages.splice(index, 1);
+    setSettings({
+      ...settings,
+      heroImages: newImages,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -230,6 +269,53 @@ export default function StoreSettings() {
                   rows={2}
                   className="w-full text-xs border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-3 py-2.5 rounded-lg focus:outline-none resize-none font-mono"
                 />
+              </div>
+            </div>
+
+            {/* Hero Banner Images */}
+            <div className="bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400 border-b border-neutral-150 dark:border-neutral-800 pb-2">
+                Hero Banner Images
+              </h3>
+              <p className="text-[10px] text-neutral-500 font-medium">
+                Upload images to display in the main landing page hero carousel.
+              </p>
+
+              <div className="flex flex-wrap gap-4">
+                {(settings.heroImages || []).map((url: string, idx: number) => (
+                  <div
+                    key={idx}
+                    className="relative w-24 h-32 bg-neutral-100 dark:bg-neutral-800 rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700"
+                  >
+                    <img src={url} alt={`Hero ${idx}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeHeroImage(idx)}
+                      className="absolute top-1 right-1 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow hover:bg-neutral-100"
+                    >
+                      <Icon name="XMarkIcon" size={12} />
+                    </button>
+                  </div>
+                ))}
+                <label className="w-24 h-32 flex flex-col items-center justify-center gap-2 bg-neutral-50 dark:bg-neutral-900 border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-lg cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                  {isUploading ? (
+                    <div className="w-4 h-4 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Icon name="PlusIcon" size={16} className="text-neutral-400" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-400">
+                        Add
+                      </span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleHeroImageUpload}
+                    disabled={isUploading}
+                    className="hidden"
+                  />
+                </label>
               </div>
             </div>
 

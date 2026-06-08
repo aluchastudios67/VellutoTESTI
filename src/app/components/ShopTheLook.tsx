@@ -16,57 +16,39 @@ interface LookItem {
   img: string;
 }
 
-const LOOK_ITEMS: LookItem[] = [
-  {
-    id: 'item-1',
-    name: 'Aurelia Sun-Drenched Yellow Dress',
-    price: 490,
-    top: '45%',
-    left: '42%',
-    img: '/assets/item 1/DSC06881.jpeg',
-  },
-  {
-    id: 'item-2',
-    name: 'Elysian Drape Blazer Suit',
-    price: 470,
-    top: '72%',
-    left: '55%',
-    img: '/assets/item 2/IMG_8337.jpeg',
-  },
-];
-
-export default function ShopTheLook() {
+export default function ShopTheLook({ products: initialProducts = [] }: { products?: any[] }) {
   const { addToCart } = useCart();
   const { language, t } = useLanguage();
   const revealRef = useScrollAnimation();
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
 
-  const getItemName = (id: string, defaultName: string) => {
-    if (id === 'item-1') {
-      if (language === 'GE') return 'ოქროსფერი კაბა აურელია';
-      if (language === 'RU') return 'Желтое платье Aurelia';
-    }
-    if (id === 'item-2') {
-      if (language === 'GE') return 'ორეული ელიზიანი';
-      if (language === 'RU') return 'Костюм блейзер Elysian';
-    }
-    return defaultName;
+  const mappedInitial =
+    Array.isArray(initialProducts) && initialProducts.length >= 2
+      ? initialProducts.slice(0, 2).map((p: any, idx: number) => ({
+          id: p.id,
+          name: p.name,
+          nameKa: p.nameKa,
+          nameRu: p.nameRu,
+          price: p.price,
+          img: p.images?.[0]?.url || '/assets/images/no_image.png',
+          top: idx === 0 ? '45%' : '72%',
+          left: idx === 0 ? '42%' : '55%',
+        }))
+      : [];
+
+  const [lookItems] = useState<LookItem[]>(mappedInitial);
+
+  const getItemName = (item: any) => {
+    if (language === 'GE') return item.nameKa || item.name;
+    if (language === 'RU') return item.nameRu || item.name;
+    return item.name;
   };
 
-  const getLocalizedNameFields = (id: string) => {
-    if (id === 'item-1') {
-      return {
-        nameKa: 'ოქროსფერი კაბა აურელია',
-        nameRu: 'Желтое платье Aurelia',
-      };
-    }
-    if (id === 'item-2') {
-      return {
-        nameKa: 'ორეული ელიზიანი',
-        nameRu: 'Костюм блейзер Elysian',
-      };
-    }
-    return {};
+  const getLocalizedNameFields = (item: any) => {
+    return {
+      nameKa: item.nameKa,
+      nameRu: item.nameRu,
+    };
   };
 
   return (
@@ -87,7 +69,7 @@ export default function ShopTheLook() {
 
             {/* List version for mobile accessibility */}
             <div className="space-y-4 pt-6 border-t border-neutral-800">
-              {LOOK_ITEMS.map((item) => (
+              {lookItems.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-center justify-between p-4 bg-neutral-900/50 border border-neutral-800/80 rounded-xl"
@@ -96,17 +78,15 @@ export default function ShopTheLook() {
                     <div className="w-10 h-12 relative flex-shrink-0">
                       <Image
                         src={item.img}
-                        alt={getItemName(item.id, item.name)}
+                        alt={getItemName(item)}
                         fill
                         sizes="40px"
                         className="object-cover rounded"
                       />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-white">
-                        {getItemName(item.id, item.name)}
-                      </p>
-                      <p className="text-xs text-neutral-300">
+                      <h3 className="font-bold text-sm text-white">{getItemName(item)}</h3>
+                      <p className="text-neutral-400 text-xs mt-0.5">
                         {item.price} {t('gel')}
                       </p>
                     </div>
@@ -118,7 +98,7 @@ export default function ShopTheLook() {
                         name: item.name,
                         price: item.price,
                         img: item.img,
-                        ...getLocalizedNameFields(item.id),
+                        ...getLocalizedNameFields(item),
                       })
                     }
                     className="p-2 bg-white text-neutral-950 hover:bg-neutral-200 transition-colors rounded-full"
@@ -134,23 +114,26 @@ export default function ShopTheLook() {
           {/* Interactive Showcase Image */}
           <div className="lg:col-span-7 relative flex justify-center">
             <div className="relative aspect-[4/5] w-full max-w-lg bg-neutral-900 rounded-3xl overflow-hidden shadow-2xl">
-              <Image
-                src="/assets/images/SnapInsta.to_587489546_17902823082313946_8580408224463025574_n.jpg"
-                alt="Model styling luxury fashion look"
-                fill
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover select-none"
-              />
+              {lookItems.length > 0 && lookItems[0].img && (
+                <Image
+                  src="/assets/images/SnapInsta.to_587489546_17902823082313946_8580408224463025574_n.jpg"
+                  alt="Shop the look editorial"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover select-none"
+                />
+              )}
+              <div className="absolute inset-0 bg-neutral-950/10 transition-colors duration-500 group-hover:bg-neutral-950/20" />
 
-              {/* Interactive Hotspot Dots */}
-              {LOOK_ITEMS.map((item) => (
+              {/* Hotspots */}
+              {lookItems.map((item) => (
                 <div key={item.id} className="absolute" style={{ top: item.top, left: item.left }}>
                   <button
                     onMouseEnter={() => setActiveHotspot(item.id)}
                     onMouseLeave={() => setActiveHotspot(null)}
                     onClick={() => setActiveHotspot(activeHotspot === item.id ? null : item.id)}
                     className="relative w-6 h-6 flex items-center justify-center bg-white text-neutral-950 font-bold rounded-full border border-neutral-900 focus:outline-none transition-transform hover:scale-110 shadow-lg"
-                    aria-label={`Hotspot for ${getItemName(item.id, item.name)}`}
+                    aria-label={`Hotspot for ${getItemName(item)}`}
                   >
                     <span className="absolute inset-0 rounded-full bg-white animate-ping opacity-30" />
                     <span className="w-1.5 h-1.5 bg-neutral-950 rounded-full z-10" />
@@ -162,15 +145,15 @@ export default function ShopTheLook() {
                       <div className="w-12 h-14 relative mb-2">
                         <Image
                           src={item.img}
-                          alt={getItemName(item.id, item.name)}
+                          alt={getItemName(item)}
                           fill
                           sizes="48px"
                           className="object-cover rounded-lg"
                         />
                       </div>
-                      <p className="text-[11px] font-bold text-neutral-800 line-clamp-1">
-                        {getItemName(item.id, item.name)}
-                      </p>
+                      <h4 className="font-bold text-[13px] text-neutral-900 leading-tight">
+                        {getItemName(item)}
+                      </h4>
                       <p className="text-xs font-semibold text-neutral-900 mt-0.5">
                         {item.price} {t('gel')}
                       </p>
@@ -181,7 +164,7 @@ export default function ShopTheLook() {
                             name: item.name,
                             price: item.price,
                             img: item.img,
-                            ...getLocalizedNameFields(item.id),
+                            ...getLocalizedNameFields(item),
                           })
                         }
                         className="mt-2 w-full bg-neutral-950 text-white hover:bg-neutral-900 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-colors"

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import Icon from '@/components/ui/AppIcon';
 import { useLanguage } from '@/context/LanguageContext';
@@ -74,10 +75,12 @@ export default function MiniCart() {
               >
                 {/* Product Image */}
                 <div className="w-20 h-24 bg-neutral-50 rounded-lg overflow-hidden relative flex-shrink-0">
-                  <img
+                  <Image
                     src={item.img}
                     alt={getItemName(item)}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="80px"
+                    className="object-cover"
                   />
                 </div>
 

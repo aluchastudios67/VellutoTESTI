@@ -1,43 +1,41 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import fs from 'fs';
+import { createClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
 import path from 'path';
 
-const MEDIA_DIR = path.join(process.cwd(), 'public', 'assets', 'images');
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const BUCKET_NAME = 'media';
 
 export async function GET() {
   try {
-    if (!fs.existsSync(MEDIA_DIR)) {
-      return NextResponse.json([]);
-    }
+    const { data, error } = await supabase.storage.from(BUCKET_NAME).list('', {
+      limit: 1000,
+      sortBy: { column: 'created_at', order: 'desc' },
+    });
 
-    const files = fs.readdirSync(MEDIA_DIR);
-    const mediaItems = files
-      .filter((file) => {
-        // filter images and videos
-        const ext = path.extname(file).toLowerCase();
-        return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4'].includes(ext);
-      })
-      .map((file, idx) => {
-        const filePath = path.join(MEDIA_DIR, file);
-        const stats = fs.statSync(filePath);
-        const ext = path.extname(file).toLowerCase();
+    if (error) throw error;
 
-        return {
-          id: `media-${idx}`,
-          name: file,
-          url: `/assets/images/${file}`,
-          size: Math.round(stats.size / 1024), // in KB
-          mimeType: ext === '.mp4' ? 'video/mp4' : `image/${ext.replace('.', '')}`,
-          createdAt: stats.birthtime,
-          folder: file.startsWith('SnapInsta') ? 'Instagram' : 'Store Branding',
-        };
-      });
+    const mediaItems = data.map((file, idx) => {
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(file.name);
+      
+      return {
+        id: file.id || `media-${idx}`,
+        name: file.name,
+        url: publicUrlData.publicUrl,
+        size: Math.round((file.metadata?.size || 0) / 1024), // in KB
+        mimeType: file.metadata?.mimetype || 'application/octet-stream',
+        createdAt: file.created_at,
+        folder: file.name.startsWith('SnapInsta') ? 'Instagram' : 'Store Branding',
+      };
+    }).filter(file => file.name !== '.emptyFolderPlaceholder'); // supabase sometimes creates these
 
     return NextResponse.json(mediaItems);
-  } catch (e) {
+  } catch (e: any) {
+    console.error('Error fetching media:', e);
     return NextResponse.json({ error: 'Failed to read media library.' }, { status: 500 });
   }
 }
@@ -52,25 +50,52 @@ export async function POST(req: Request) {
     }
 
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    let buffer = Buffer.from(bytes);
 
-    // Clean file name
-    const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-    const destinationPath = path.join(MEDIA_DIR, cleanName);
+    // Clean file name and ensure unique
+    const ext = path.extname(file.name);
+    let cleanName = file.name.replace(ext, '').replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now() + ext;
 
-    // Write file to assets directory
-    fs.writeFileSync(destinationPath, buffer);
+    // Check size and compress if needed (3MB = 3 * 1024 * 1024 bytes)
+    const MAX_SIZE = 3 * 1024 * 1024;
+    let mimeType = file.type;
+
+    if (buffer.length > MAX_SIZE && mimeType.startsWith('image/')) {
+      // Compress with sharp
+      buffer = await sharp(buffer)
+        .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80, mozjpeg: true })
+        .toBuffer();
+        
+      mimeType = 'image/jpeg';
+      cleanName = cleanName.replace(ext, '.jpg'); // Change extension if we converted to JPEG
+    }
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage.from(BUCKET_NAME).upload(cleanName, buffer, {
+      contentType: mimeType,
+      cacheControl: '3600',
+      upsert: false
+    });
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+      throw error;
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(cleanName);
 
     return NextResponse.json({
       success: true,
       id: `media-${Date.now()}`,
       name: cleanName,
-      url: `/assets/images/${cleanName}`,
-      size: Math.round(file.size / 1024),
-      mimeType: file.type,
+      url: publicUrlData.publicUrl,
+      size: Math.round(buffer.length / 1024),
+      mimeType: mimeType,
       createdAt: new Date(),
     });
-  } catch (e) {
+  } catch (e: any) {
+    console.error('Upload error:', e);
     return NextResponse.json({ error: 'Failed to upload media item.' }, { status: 500 });
   }
 }

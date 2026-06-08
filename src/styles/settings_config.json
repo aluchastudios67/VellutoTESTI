@@ -1,0 +1,31 @@
+{
+  "storeName": "Velluto Luxury Store",
+  "contactEmail": "boutique@velluto.com",
+  "contactPhone": "+995 599 12 34 56",
+  "address": "Vardisubani, Tbilisi, Georgia",
+  "socialLinks": {
+    "instagram": "https://www.instagram.com/velluto_____/",
+    "facebook": "https://facebook.com/velluto",
+    "pinterest": "https://pinterest.com/velluto"
+  },
+  "shipping": {
+    "tbilisiRate": 0,
+    "regionalRate": 15,
+    "minFreeShipping": 300
+  },
+  "tax": {
+    "vatRate": 18,
+    "isTaxIncluded": true
+  },
+  "payments": {
+    "bankTransfer": true,
+    "cashOnDelivery": true,
+    "cardOnDelivery": false,
+    "bankDetails": ""
+  },
+  "heroImages": [
+    "/assets/images/IMG_0701.jpeg",
+    "/assets/images/IMG_8337.jpeg",
+    "/assets/images/DSC06980.jpeg"
+  ]
+}

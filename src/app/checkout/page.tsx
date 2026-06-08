@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import CheckoutForm from './components/CheckoutForm';
 import Icon from '@/components/ui/AppIcon';
@@ -78,10 +79,12 @@ export default function CheckoutPage() {
                   {cart.map((item) => (
                     <div key={item.id} className="flex gap-4 pt-4 first:pt-0">
                       <div className="w-16 h-20 bg-white rounded-lg overflow-hidden relative flex-shrink-0 border border-neutral-100">
-                        <img
+                        <Image
                           src={item.img}
                           alt={getItemName(item)}
-                          className="w-full h-full object-cover"
+                          fill
+                          sizes="64px"
+                          className="object-cover"
                         />
                       </div>
                       <div className="flex-1 flex flex-col justify-between py-1">

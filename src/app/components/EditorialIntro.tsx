@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -45,10 +46,12 @@ export default function EditorialIntro() {
         {/* Right Side: Image Grid Collage */}
         <div className="relative">
           <div className="aspect-[4/5] w-full bg-neutral-100 rounded-2xl overflow-hidden relative shadow-2xl">
-            <img
+            <Image
               src="/assets/images/SnapInsta.to_660404461_18571325920023235_6002293829497873707_n.jpg"
               alt="Artisanal fashion creation"
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-[6000ms]"
+              fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-cover hover:scale-105 transition-transform duration-[6000ms]"
             />
           </div>
           {/* Floating detail tag */}

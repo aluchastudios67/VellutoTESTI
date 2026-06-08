@@ -24,6 +24,7 @@ interface ProductVariant {
   id: string;
   size: string | null;
   color: string | null;
+  metal: string | null;
   stock: number;
 }
 
@@ -60,6 +61,11 @@ const COLOR_MAP: Record<string, string> = {
   'Alabaster White': '#F8F6F2',
   'Powder Rose': '#FFD1DC',
   'Soft Horizon': '#89CFF0',
+  'Baby Pink': '#F4C2C2',
+  'Baby Blue': '#89CFF0',
+  'Black': '#111111',
+  'White': '#FFFFFF',
+  'Brown': '#5D4037',
 };
 
 export default function ProductDetailsClient({ product }: ProductDetailsClientProps) {
@@ -147,7 +153,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
     new Set(product.variants.map((v) => v.size).filter((s): s is string => !!s))
   );
   const colors = Array.from(
-    new Set(product.variants.map((v) => v.color).filter((c): c is string => !!c))
+    new Set(product.variants.map((v) => v.color || v.metal).filter((c): c is string => !!c))
   );
 
   return (
@@ -337,16 +343,20 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
               </div>
               <div className="flex flex-wrap gap-2.5">
                 {colors.map((color) => {
-                  const hex = COLOR_MAP[color];
+                  const hex = COLOR_MAP[color] || color;
                   let isLight = false;
-                  if (hex) {
+                  if (hex && hex.startsWith('#')) {
                     const c = hex.replace('#', '');
                     const rgb = parseInt(c, 16);
-                    const r = (rgb >> 16) & 0xff;
-                    const g = (rgb >> 8) & 0xff;
-                    const b = (rgb >> 0) & 0xff;
-                    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                    isLight = luma > 175;
+                    if (!isNaN(rgb)) {
+                      const r = (rgb >> 16) & 0xff;
+                      const g = (rgb >> 8) & 0xff;
+                      const b = (rgb >> 0) & 0xff;
+                      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                      isLight = luma > 175;
+                    }
+                  } else if (hex && ['white', 'yellow', 'ivory', 'light', 'transparent'].some(w => hex.toLowerCase().includes(w))) {
+                    isLight = true;
                   }
 
                   return (
@@ -504,46 +514,6 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
                 </span>
               )}
             </button>
-          </div>
-
-          {/* ── Details strip ── */}
-          <div className="mt-10 pt-8 border-t border-neutral-100 grid grid-cols-3 gap-4 text-center">
-            {[
-              {
-                icon: '✦',
-                label:
-                  language === 'GE'
-                    ? 'პრემიუმ ხარისხი'
-                    : language === 'RU'
-                      ? 'Люкс качество'
-                      : 'Premium Quality',
-              },
-              {
-                icon: '◎',
-                label:
-                  language === 'GE'
-                    ? 'უფასო მიწოდება'
-                    : language === 'RU'
-                      ? 'Бесплатная доставка'
-                      : 'Free Delivery',
-              },
-              {
-                icon: '↩',
-                label:
-                  language === 'GE'
-                    ? '14-დღიანი დაბრუნება'
-                    : language === 'RU'
-                      ? '14 дней возврат'
-                      : '14-Day Returns',
-              },
-            ].map((item) => (
-              <div key={item.label} className="flex flex-col items-center gap-1.5">
-                <span className="text-[16px] text-neutral-400">{item.icon}</span>
-                <span className="text-[10px] font-semibold tracking-wide text-neutral-400 leading-tight text-center">
-                  {item.label}
-                </span>
-              </div>
-            ))}
           </div>
         </div>
       </div>

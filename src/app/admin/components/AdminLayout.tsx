@@ -96,12 +96,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {formattedName}
             </span>
           ) : (
-            <a
+            <Link
               href={path}
               className="text-neutral-400 dark:text-neutral-500 hover:text-neutral-900 dark:hover:text-white text-xs uppercase tracking-wider"
             >
               {formattedName}
-            </a>
+            </Link>
           )}
         </React.Fragment>
       );
@@ -148,7 +148,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {SIDEBAR_ITEMS.map((item) => {
             const isActive = pathname.startsWith(item.path);
             return (
-              <a
+              <Link
                 key={item.path}
                 href={item.path}
                 className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 text-xs font-semibold uppercase tracking-wider ${
@@ -159,7 +159,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               >
                 <Icon name={item.iconName} size={18} />
                 {isSidebarOpen && <span>{item.name}</span>}
-              </a>
+              </Link>
             );
           })}
         </nav>
@@ -201,7 +201,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {SIDEBAR_ITEMS.map((item) => {
                 const isActive = pathname.startsWith(item.path);
                 return (
-                  <a
+                  <Link
                     key={item.path}
                     href={item.path}
                     onClick={() => setIsMobileOpen(false)}
@@ -213,7 +213,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   >
                     <Icon name={item.iconName} size={18} />
                     <span>{item.name}</span>
-                  </a>
+                  </Link>
                 );
               })}
             </nav>
@@ -258,12 +258,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </button>
 
               {/* Notifications Link */}
-              <a
+              <Link
                 href="/admin/notifications"
                 className="relative p-2.5 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
               >
                 <Icon name="BellIcon" size={18} />
-              </a>
+              </Link>
 
               {/* User Dropdown */}
               <div className="relative">
@@ -298,13 +298,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </p>
                       </div>
                       <div className="py-1">
-                        <a
+                        <Link
                           href="/admin/settings"
                           className="flex items-center gap-2.5 px-4 py-2 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 hover:text-neutral-900 dark:hover:text-white transition-colors"
                         >
                           <Icon name="Cog6ToothIcon" size={14} />
                           Store Settings
-                        </a>
+                        </Link>
                         <Link
                           href="/"
                           className="flex items-center gap-2.5 px-4 py-2 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 hover:text-neutral-900 dark:hover:text-white transition-colors"

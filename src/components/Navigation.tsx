@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -38,12 +39,15 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
         {/* Brand Logo - Inverted when transparent header over dark hero background */}
         <Link href="/" className="flex items-center gap-2 group">
-          <img
+          <Image
             src="/assets/images/logowithbg.png"
             alt="Velluto"
+            width={300}
+            height={144}
             className={`h-36 w-auto object-contain -my-10 transition-all duration-300 ${
               showWhiteHeader ? '' : 'invert'
             }`}
+            priority
           />
         </Link>
 

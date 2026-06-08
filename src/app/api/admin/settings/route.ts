@@ -32,6 +32,7 @@ const DEFAULT_SETTINGS = {
     cardOnDelivery: true,
     bankDetails: 'TBC Bank: GE82TB77364525374839',
   },
+  heroImages: [] as string[],
 };
 
 export async function GET() {
