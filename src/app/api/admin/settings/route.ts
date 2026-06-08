@@ -1,11 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import fs from 'fs';
-import path from 'path';
-
-const SETTINGS_PATH = path.join(process.cwd(), 'src', 'styles', 'settings_config.json');
 
 const DEFAULT_SETTINGS = {
   storeName: 'Velluto Luxury Store',
@@ -18,12 +12,12 @@ const DEFAULT_SETTINGS = {
     pinterest: 'https://pinterest.com/velluto',
   },
   shipping: {
-    tbilisiRate: 0, // free
+    tbilisiRate: 0,
     regionalRate: 15,
     minFreeShipping: 300,
   },
   tax: {
-    vatRate: 18, // 18% in Georgia
+    vatRate: 18,
     isTaxIncluded: true,
   },
   payments: {
@@ -37,13 +31,18 @@ const DEFAULT_SETTINGS = {
 
 export async function GET() {
   try {
-    let settings = DEFAULT_SETTINGS;
-    if (fs.existsSync(SETTINGS_PATH)) {
-      settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'));
+    const record = await prisma.storeSettings.findUnique({
+      where: { id: 'global' },
+    });
+    
+    if (record && record.data) {
+      return NextResponse.json(record.data);
     }
-    return NextResponse.json(settings);
+    return NextResponse.json(DEFAULT_SETTINGS);
   } catch (e) {
-    return NextResponse.json({ error: 'Failed to read settings.' }, { status: 500 });
+    console.error('Failed to read settings from DB:', e);
+    // Fallback to default if DB fails
+    return NextResponse.json(DEFAULT_SETTINGS);
   }
 }
 
@@ -51,12 +50,11 @@ export async function POST(req: Request) {
   try {
     const settings = await req.json();
 
-    const dirPath = path.dirname(SETTINGS_PATH);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
-
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+    await prisma.storeSettings.upsert({
+      where: { id: 'global' },
+      update: { data: settings },
+      create: { id: 'global', data: settings },
+    });
 
     // Audit log is non-critical — don't let a DB failure block the save
     try {
@@ -72,6 +70,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, settings });
   } catch (e) {
+    console.error('Failed to update store settings in DB:', e);
     return NextResponse.json({ error: 'Failed to update store settings.' }, { status: 500 });
   }
 }

@@ -83,30 +83,36 @@ export default function NewProduct() {
   useEffect(() => {
     const loadFormOptions = async () => {
       try {
-        const [catRes, medRes] = await Promise.all([
-          fetch('/api/admin/categories'),
-          fetch('/api/admin/media')
-        ]);
-
-        if (catRes.ok) {
-          const catData = await catRes.json();
-          if (Array.isArray(catData) && catData.length > 0) {
-            setCategories(catData);
-            setFormData((prev) => ({ ...prev, categoryId: catData[0].id }));
+        // Fetch categories independently
+        try {
+          const catRes = await fetch('/api/admin/categories');
+          if (catRes.ok) {
+            const catData = await catRes.json();
+            if (Array.isArray(catData) && catData.length > 0) {
+              setCategories(catData);
+              setFormData((prev) => ({ ...prev, categoryId: catData[0].id }));
+            } else {
+              setCategoriesError(true);
+            }
           } else {
             setCategoriesError(true);
           }
-        } else {
+        } catch (catErr) {
+          console.error('Failed to load categories', catErr);
           setCategoriesError(true);
         }
 
-        if (medRes.ok) {
-          const medData = await medRes.json();
-          setMediaItems(medData);
+        // Fetch media independently so it doesn't block categories
+        try {
+          const medRes = await fetch('/api/admin/media');
+          if (medRes.ok) {
+            const medData = await medRes.json();
+            setMediaItems(medData);
+          }
+        } catch (medErr) {
+          console.error('Failed to load media', medErr);
         }
-      } catch (e) {
-        console.error('Failed to load form config options');
-        setCategoriesError(true);
+
       } finally {
         setCategoriesLoading(false);
       }

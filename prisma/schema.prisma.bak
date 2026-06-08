@@ -1,24 +1,27 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+
 model User {
   id        String     @id @default(uuid())
   email     String     @unique
   password  String
   name      String
-  role      UserRole   @default(STAFF)
-  status    String     @default("ACTIVE")
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  role      String     @default("STAFF")
+  status    String     @default("ACTIVE") // ACTIVE, INACTIVE
   auditLogs AuditLog[]
   blogPosts BlogPost[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model Category {
@@ -27,9 +30,9 @@ model Category {
   nameKa    String
   nameRu    String
   slug      String    @unique
+  products  Product[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  products  Product[]
 }
 
 model Product {
@@ -43,23 +46,24 @@ model Product {
   price          Float
   sku            String           @unique
   inventory      Int              @default(0)
-  status         ProductStatus    @default(ACTIVE)
+  status         String           @default("ACTIVE")
   tag            String?
   rating         Int              @default(5)
   categoryId     String
+  category       Category         @relation(fields: [categoryId], references: [id])
+  variants       ProductVariant[]
+  images         ProductImage[]
+  orderItems     OrderItem[]
   seoTitle       String?
   seoDescription String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
-  orderItems     OrderItem[]
-  category       Category         @relation(fields: [categoryId], references: [id])
-  images         ProductImage[]
-  variants       ProductVariant[]
 }
 
 model ProductVariant {
   id              String   @id @default(uuid())
   productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   sku             String   @unique
   size            String?
   color           String?
@@ -68,16 +72,15 @@ model ProductVariant {
   priceAdjustment Float    @default(0.0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model ProductImage {
   id         String   @id @default(uuid())
   productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   url        String
   isFeatured Boolean  @default(false)
   createdAt  DateTime @default(now())
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Customer {
@@ -87,10 +90,10 @@ model Customer {
   phone     String   @unique
   address   String
   notes     String?
-  segment   String   @default("New")
+  segment   String   @default("New") // VIP, Regular, New
+  orders    Order[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  orders    Order[]
 }
 
 model Order {
@@ -102,42 +105,42 @@ model Order {
   deliveryTime  String
   paymentMethod String
   notes         String?
-  status        OrderStatus   @default(PENDING)
-  paymentStatus PaymentStatus @default(UNPAID)
+  status        String        @default("PENDING")
+  paymentStatus String        @default("UNPAID")
   total         Float
+  items         OrderItem[]
   customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   couponId      String?
+  coupon        Coupon?       @relation(fields: [couponId], references: [id], onDelete: SetNull)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  coupon        Coupon?       @relation(fields: [couponId], references: [id])
-  customer      Customer?     @relation(fields: [customerId], references: [id])
-  items         OrderItem[]
 }
 
 model OrderItem {
-  id              String   @id @default(uuid())
+  id              String  @id @default(uuid())
   orderId         String
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId       String?
+  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   productName     String
   productPrice    Float
   qty             Int
-  variantSelected String?
-  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product         Product? @relation(fields: [productId], references: [id])
+  variantSelected String? // JSON description of variant selected
 }
 
 model Coupon {
   id            String       @id @default(uuid())
   code          String       @unique
-  discountType  DiscountType
+  discountType  String
   discountValue Float
   expiresAt     DateTime?
   isActive      Boolean      @default(true)
   usageLimit    Int?
   usageCount    Int          @default(0)
+  orders        Order[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
-  orders        Order[]
 }
 
 model BlogPost {
@@ -150,11 +153,11 @@ model BlogPost {
   contentRu String
   slug      String   @unique
   image     String
-  status    String   @default("DRAFT")
+  status    String   @default("DRAFT") // DRAFT, PUBLISHED
   authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  author    User     @relation(fields: [authorId], references: [id])
 }
 
 model MediaLibrary {
@@ -167,17 +170,11 @@ model MediaLibrary {
   createdAt DateTime @default(now())
 }
 
-model StoreSettings {
-  id        String   @id @default("global")
-  data      Json
-  updatedAt DateTime @updatedAt
-}
-
 model Notification {
   id        String           @id @default(uuid())
   title     String
   message   String
-  type      NotificationType @default(SYSTEM)
+  type      String           @default("SYSTEM")
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
 }
@@ -185,49 +182,15 @@ model Notification {
 model AuditLog {
   id        String   @id @default(uuid())
   userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   action    String
   details   String
   ipAddress String?
   createdAt DateTime @default(now())
-  user      User?    @relation(fields: [userId], references: [id])
 }
 
-enum DiscountType {
-  PERCENTAGE
-  FIXED
-}
-
-enum NotificationType {
-  ORDER
-  INVENTORY
-  SYSTEM
-  MESSAGE
-}
-
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
-  REFUNDED
-}
-
-enum PaymentStatus {
-  UNPAID
-  PAID
-  REFUNDED
-}
-
-enum ProductStatus {
-  DRAFT
-  ACTIVE
-  ARCHIVED
-}
-
-enum UserRole {
-  SUPER_ADMIN
-  ADMIN
-  STAFF
+model StoreSettings {
+  id        String   @id @default("global")
+  data      Json
+  updatedAt DateTime @updatedAt
 }

@@ -83,22 +83,37 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     const loadFormOptions = async () => {
       try {
-        const [catRes, medRes, prodRes] = await Promise.all([
-          fetch('/api/admin/categories'),
-          fetch('/api/admin/media'),
-          fetch(`/api/admin/products/${id}`)
-        ]);
-
-        if (catRes.ok) {
-          const catData = await catRes.json();
-          setCategories(catData);
+        // Fetch categories independently
+        try {
+          const catRes = await fetch('/api/admin/categories');
+          if (catRes.ok) {
+            const catData = await catRes.json();
+            if (Array.isArray(catData)) {
+              setCategories(catData);
+            } else {
+              setCategoriesError(true);
+            }
+          } else {
+            setCategoriesError(true);
+          }
+        } catch (catErr) {
+          console.error('Failed to load categories', catErr);
+          setCategoriesError(true);
         }
 
-        if (medRes.ok) {
-          const medData = await medRes.json();
-          setMediaItems(medData);
+        // Fetch media independently
+        try {
+          const medRes = await fetch('/api/admin/media');
+          if (medRes.ok) {
+            const medData = await medRes.json();
+            setMediaItems(medData);
+          }
+        } catch (medErr) {
+          console.error('Failed to load media', medErr);
         }
 
+        // Fetch product independently
+        const prodRes = await fetch(`/api/admin/products/${id}`);
         if (prodRes.ok) {
           const prodData = await prodRes.json();
           setFormData({
